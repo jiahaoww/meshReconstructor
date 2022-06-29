@@ -9,6 +9,7 @@ interpolate_times = 0
 smooth_positive_scale = 0.33
 smooth_negative_scale = -0.34
 smooth_iteration_times = 90
+spacing = [3.0, 0.28125, 0.28125]
 
 
 def save_img(image):
@@ -95,7 +96,7 @@ def num(path):
 
 
 def get_list(path):
-    for root, dirs, files in os.walk(path):
+    for _, _, files in os.walk(path):
         return files
 
 
@@ -129,7 +130,7 @@ while interpolate_times > 0:
     img = interpolate(img)
     interpolate_times = interpolate_times - 1
 
-v, f, n = measure.marching_cubes(img, 0.01, spacing=[3.0 / denominator, 0.28125, 0.28125])
+v, f, n, values = measure.marching_cubes(img, 0.01, spacing=[spacing[0] / denominator, spacing[1], spacing[2]])
 neighbors = get_neighbor(v, f)
 v = smoothing(v, neighbors, smooth_iteration_times)
 f = f + 1

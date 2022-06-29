@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="stl_cont" style="width: 100%;height: 100vh"></div>
+</body>
+<script src="stl_viewer.min.js"></script>
+<script>
+  var stl_viewer=new StlViewer(document.getElementById("stl_cont"), 
+  { 
+    models: [ 
+      {
+        id:0, 
+        filename:"../test.obj",
+        display: "smooth",
+        color: "#ff1212",
+        opacity: 1.0,
+        view_edges: false
+      } 
+    ] 
+  }
+  )
+</script>
+</html>
