@@ -3,4 +3,5 @@ venv
 raw
 annotation
 *.obj
-
+__pycache__
+obj

@@ -8,19 +8,20 @@ import os
 interpolate_times = 0
 smooth_positive_scale = 0.33
 smooth_negative_scale = -0.34
-smooth_iteration_times = 90
-spacing = [3.0, 0.28125, 0.28125]
+smooth_iteration_times = 50
+smooth_step = 0
+spacing = [0.05, 0.05, 0.05]
+file_directory = "./obj/"
 
 
 def save_img(image):
     for i in range(image.shape[0]):
         plt.imshow(image[i, :, :], cmap='gray')
-        path = "./annotation/" + str(i + 1)
-        plt.savefig(path)
+        plt.show()
 
 
-def write_obj(vertices, faces, normals):
-    obj = open('test.obj', 'w')
+def write_obj(vertices, faces, normals, filename):
+    obj = open(file_directory + filename + ".obj", 'w')
     for item in vertices:
         obj.write("v {0} {1} {2}\n".format(item[0], item[1], item[2]))
 
@@ -61,13 +62,19 @@ def smoothing(vertices, neighbor, times):
                 sum_pos += vertices[k] - vertices[cur]
             vertices[cur] += scale * sum_pos / nei_len
 
-    i = 0
-    while i < times:
+    global smooth_step
+    smooth_step = 0
+    while smooth_step < times:
         update_vertices(smooth_positive_scale)
         update_vertices(smooth_negative_scale)
-        i = i + 1
-        print("smoothing_iteration: {0}/{1} ".format(i, times))
+        smooth_step = smooth_step + 1
+        print("smoothing_iteration: {0}/{1} ".format(smooth_step, times))
     return vertices
+
+
+def get_process():
+    global smooth_step
+    return smooth_step / smooth_iteration_times
 
 
 def get_neighbor(vertices, faces):
@@ -100,38 +107,57 @@ def get_list(path):
         return files
 
 
-img_dir = "./img/"
-img_list = get_list(img_dir)
-img_list = sorted(img_list, key=num)
-final_array = np.empty([0, 640, 640])
-for img in img_list:
-    print("reading: ", img_dir + img)
-    img_array = io.imread(img_dir + img)
-    slice_array = np.empty([img_array.shape[0], img_array.shape[1]])
-    for p in range(img_array.shape[0]):
-        for q in range(img_array.shape[1]):
-            if img_array[p, q, 0] > 0:
-                slice_array[p, q] = 1
-            else:
-                slice_array[p, q] = 0
-    final_array = np.append(final_array, [slice_array], axis=0)
-print("dataset size: ", final_array.shape)
+def get_data_from_slice_info(size, index):
+    dim_x, dim_y, dim_z = size[0], size[1], size[2]
+    dataset = np.zeros([dim_x, dim_y, dim_z])
+    for ind in index:
+        x, y, z = ind[0], ind[1], ind[2]
+        dataset[x, y, z] = 1
+    return dataset
 
-# itk_img = sit_k.ReadImage('./nii/annotation.nii')
-# img = sit_k.GetArrayFromImage(itk_img)
-# save_img(img)
 
-img = final_array
+def get_data_from_img_dir(img_dir):
+    img_list = get_list(img_dir)
+    img_list = sorted(img_list, key=num)
+    final_array = np.empty([0, 640, 640])
+    for img in img_list:
+        print("reading image: ", img_dir, img)
+        img_array = io.imread(img_dir + img)
+        slice_array = np.empty([img_array.shape[0], img_array.shape[1]])
+        for p in range(img_array.shape[0]):
+            for q in range(img_array.shape[1]):
+                if img_array[p, q, 0] > 0:
+                    slice_array[p, q] = 1
+                else:
+                    slice_array[p, q] = 0
+        final_array = np.append(final_array, [slice_array], axis=0)
+    return final_array
 
-# interpolate between slices
 
-denominator = 2 ** interpolate_times
-while interpolate_times > 0:
-    img = interpolate(img)
-    interpolate_times = interpolate_times - 1
-
-v, f, n, values = measure.marching_cubes(img, 0.01, spacing=[spacing[0] / denominator, spacing[1], spacing[2]])
-neighbors = get_neighbor(v, f)
-v = smoothing(v, neighbors, smooth_iteration_times)
-f = f + 1
-write_obj(v, f, n)
+def reconstruct(dataset, filename):
+    img = dataset
+    itk_img = sit_k.ReadImage('./brain_nii/P56_Atlas_downsample2.nii')
+    print(itk_img)
+    img = sit_k.GetArrayFromImage(itk_img)
+    print(img.size)
+    print(img.shape)
+    print(img.min(), img.max())
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            for k in range(img.shape[2]):
+                if img[i, j, k] > 1:
+                    img[i, j, k] = 1
+                else:
+                    img[i, j, k] = 0
+    save_img(img)
+    # interpolate between slices
+    denominator = 2 ** interpolate_times
+    times = interpolate_times
+    while times > 0:
+        img = interpolate(img)
+        times = times - 1
+    v, f, n, values = measure.marching_cubes(img, 0.9999999, spacing=[spacing[0], spacing[1], spacing[2]])
+    # neighbors = get_neighbor(v, f)
+    # v = smoothing(v, neighbors, smooth_iteration_times)
+    f = f + 1
+    write_obj(v, f, n, filename)
